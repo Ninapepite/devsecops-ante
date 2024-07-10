@@ -1,0 +1,88 @@
+#version: '3.8' # Spécifie la version du format de fichier Docker Compose utilisée
+#N'est plus nédessaire dans les dernières versions de docker engine
+
+services:
+  symfony:
+    # Définition du service pour l'application Symfony
+    build:
+      context: . # Contexte de construction, le répertoire courant
+      dockerfile: .devcontainer/Dockerfile # Chemin vers le Dockerfile utilisé pour construire l'image
+    volumes:
+      - .:/var/www/html # Montage du répertoire courant dans le conteneur à /var/www/html
+    ports:
+      - "8080:80" # Redirection du port 8080 de l'hôte vers le port 80 du conteneur
+    depends_on:
+      - db # Dépendance : démarrer le service db avant
+      - redis # Dépendance : démarrer le service redis avant
+
+  db:
+    # Définition du service pour la base de données MariaDB
+    image: mariadb:latest # Utilise l'image MariaDB la plus récente
+    environment:
+      # Définition des variables d'environnement pour MariaDB
+      MYSQL_ROOT_PASSWORD: root # Mot de passe pour l'utilisateur root (à sécuriser)
+      MYSQL_DATABASE: symfony # Nom de la base de données par défaut
+      MYSQL_USER: symfony # Nom d'utilisateur pour la base de données
+      MYSQL_PASSWORD: symfony # Mot de passe pour l'utilisateur (à sécuriser)
+    ports:
+      - "3306:3306" # Redirection du port 3306 de l'hôte vers le port 3306 du conteneur
+    volumes:
+      - db_data:/var/lib/mysql # Montage du volume db_data pour persister les données de la base
+
+  redis:
+    # Définition du service pour Redis
+    image: redis:latest # Utilise l'image Redis la plus récente
+    ports:
+      - "6379:6379" # Redirection du port 6379 de l'hôte vers le port 6379 du conteneur
+
+volumes:
+  db_data:
+    # Définition d'un volume nommé db_data pour persister les données de la base de données
+
+    ## Recommandations de sécurité
+
+    # 1. Utilisation de Secrets pour les variables d'environnement sensibles
+    #    Les variables d'environnement contenant des informations sensibles comme les mots de passe devraient être stockées de manière sécurisée.
+    #    Exemple : les variables d'environnement depuis un fichier `.env` non versionné ou des gestionnaires de secrets comme Docker Secrets ou HashiCorp Vault.
+    #    Modifiez les variables d'environnement pour utiliser les secrets :
+
+    # 2. Utilisation d'un Reverse Proxy Sécurisé
+    #    En production, il est préférable d'utiliser un serveur proxy inverse comme Nginx pour gérer le trafic entrant et appliquer des règles de sécurité.
+    #    CrowdSec peut être intégré pour fournir une protection dynamique contre les menaces.
+
+    # 3. Mises à jour des images
+    #    Utiliser des images spécifiques (par exemple, `mariadb:10.5`) plutôt que `latest` pour éviter des changements inattendus.
+
+    # 4. Ressources limitées
+    #    Configurer des limites de ressources pour les conteneurs afin de prévenir d'une utilisation excessive et d'assurer des performances stable.
+    # services:
+    #   symfony:
+    #     resources:
+    #       limits:
+    #         cpus: "0.5"
+    #         memory: "512m"
+    #   db:
+    #     resources:
+    #       limits:
+    #         cpus: "1.0"
+    #         memory: "1g"
+
+    # 5. Réseau sécurisé
+    #    Utiliser des réseaux Docker personnalisés pour isoler les services entre eux et limiter les accès non autorisés.
+    # networks:
+    #   front:
+    #   back:
+    # services:
+    #   symfony:
+    #     networks:
+    #       - front
+    #       - back
+    #   db:
+    #     networks:
+    #       - back
+    #   redis:
+    #     networks:
+    #       - back
+    #   nginx:
+    #     networks:
+    #       - front
